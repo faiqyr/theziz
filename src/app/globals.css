@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+@layer components {
+  /* Style khusus tombol login sosial agar seragam */
+  .social-btn {
+    @apply w-full flex items-center justify-start gap-4 px-4 py-3.5 rounded-lg border border-white/10 hover:bg-white/5 transition-all duration-200 text-sm font-medium text-white relative;
+  }
+  
+  /* Agar teks di tombol selalu rata tengah tapi icon di kiri */
+  .social-btn span {
+    @apply flex-1 text-center pr-5; /* pr-5 untuk menyeimbangkan icon di kiri */
+  }
 }
 
 @theme inline {
