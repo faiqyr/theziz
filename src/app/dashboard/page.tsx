@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/useAuthStore"; // 1. Import Store
 import { 
   Sparkles, 
   BookOpen, 
@@ -15,19 +15,19 @@ import {
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const [userName, setUserName] = useState("");
+  // 2. Ambil data user dari Store
+  const { user } = useAuthStore();
+  
+  // State lokal untuk nama tampilan (default "Researcher" agar tidak error saat loading)
+  const [displayName, setDisplayName] = useState("Researcher");
 
+  // 3. Update nama saat data user dari store tersedia
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Ambil nama depan saja
-        const fullName = user.user_metadata?.full_name || "Researcher";
-        setUserName(fullName.split(" ")[0]);
-      }
-    };
-    getUser();
-  }, []);
+    if (user && user.name) {
+      // Ambil nama depan saja
+      setDisplayName(user.name.split(" ")[0]);
+    }
+  }, [user]);
 
   const features = [
     {
@@ -39,12 +39,12 @@ export default function DashboardPage() {
       href: "/dashboard/generator"
     },
     {
-      title: "Literature Review",
-      desc: "Analyze 100+ papers in seconds.",
+      title: "Thesis Blueprint",
+      desc: "Generate Prompt with Thesis Blueprint",
       icon: BookOpen,
       color: "text-red-400",
       bg: "group-hover:bg-red-400/10",
-      href: "/dashboard/literature"
+      href: "/dashboard/blueprint"
     },
     {
       title: "Data Visualization",
@@ -91,13 +91,13 @@ export default function DashboardPage() {
            </span>
            <span className="text-xs text-gray-400">Introducing Theziz 2.0 with Deep Reasoning &rarr;</span>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight">
-          Good morning, {userName}
+        <h1 className="text-4xl font-bold tracking-tight text-white">
+          Good morning, {displayName}
         </h1>
         <p className="text-gray-400 mt-2">Ready to make progress on your research today?</p>
       </div>
 
-      {/* Main Grid Features (Mirip ElevenLabs) */}
+      {/* Main Grid Features */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((item, idx) => (
           <Link 
@@ -126,7 +126,7 @@ export default function DashboardPage() {
       {/* Secondary Section (Latest Projects) */}
       <div className="mt-16">
         <div className="flex items-center justify-between mb-6">
-           <h2 className="text-xl font-bold">Latest from your library</h2>
+           <h2 className="text-xl font-bold text-white">Latest from your library</h2>
            <Link href="/dashboard/projects" className="text-sm text-purple-400 hover:text-purple-300">View all</Link>
         </div>
 

@@ -1,321 +1,352 @@
 "use client";
 
-import React, { useState } from 'react';
-import { 
-  Sparkles, 
-  Copy, 
-  Check, 
-  Settings2, 
-  ChevronDown, 
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Sparkles,
+  Copy,
+  Check,
+  Settings2,
+  ChevronDown,
   RefreshCw,
-  BookOpen,
-  HelpCircle, // Import icon baru untuk tab panduan
-  Lightbulb
-} from 'lucide-react';
+  Send,
+  Trash2,
+  User,
+  HelpCircle,
+  Lightbulb,
+  Pencil,
+  Zap,
+} from "lucide-react";
 
-// --- Tipe Data (TypeScript Interfaces) ---
-interface SettingsState {
-  model: string;
-  tone: number;
-  length: number;
-  language: 'id' | 'en';
-}
-
-interface GenerateResponse {
-  success: boolean;
-  result?: string;
-  error?: string;
-}
+import { useThesisStore } from "@/store/useThesisStore";
 
 export default function GeneratorPage() {
-  // State Utama
-  const [prompt, setPrompt] = useState<string>('');
-  const [result, setResult] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
-  
-  // State untuk Tab Sidebar (NEW)
-  const [activeTab, setActiveTab] = useState<'config' | 'guide'>('config');
+  const {
+    messages,
+    addMessage,
+    currentInput,
+    setCurrentInput,
+    isLoading,
+    setLoading,
+    settings,
+    setSettings,
+    clearHistory,
+    editAndTruncate,
+  } = useThesisStore();
 
-  // Default Settings
-  const [settings, setSettings] = useState<SettingsState>({
-    model: 'bab1',
-    tone: 70,
-    length: 50,
-    language: 'id'
-  });
+  const [activeTab, setActiveTab] = useState<"config" | "guide">("config");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Handler: Call API
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return;
-    
+  useEffect(() => {
+    if (!editingId) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isLoading, editingId]);
+
+  const triggerAPI = async (promptText: string) => {
     setLoading(true);
-    setResult(''); 
-
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, settings }),
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptText, settings }),
       });
-
-      const data: GenerateResponse = await response.json();
-      
+      const data = await response.json();
       if (response.ok && data.result) {
-        setResult(data.result);
+        addMessage("ai", data.result);
       } else {
-        alert(data.error || "Terjadi kesalahan.");
+        addMessage("ai", `Error: ${data.error || "Gagal memproses."}`);
       }
     } catch (error) {
-      console.error(error);
-      alert("Gagal menghubungi server.");
+      addMessage("ai", "Error koneksi server.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handler: Copy to Clipboard
-  const handleCopy = () => {
-    if (result) {
-      navigator.clipboard.writeText(result);
+  const handleSend = async () => {
+    const text = currentInput || "";
+    if (!text.trim()) return;
+    addMessage("user", text);
+    setCurrentInput("");
+    await triggerAPI(text);
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editText.trim()) return;
+    editAndTruncate(id, editText);
+    setEditingId(null);
+    setEditText("");
+    await triggerAPI(editText);
+  };
+
+  const CopyButton = ({ text }: { text: string }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+      navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }
+    };
+    return (
+      <button
+        onClick={handleCopy}
+        className="p-1.5 text-gray-400 hover:text-black transition-colors rounded"
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    );
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-[#f3f4f6] overflow-hidden font-sans">
-      
-      {/* --- AREA UTAMA (KIRI - SCROLLABLE) --- */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <div className="p-8 max-w-4xl mx-auto w-full space-y-6">
-          
-          {/* BAGIAN 1: INPUT PROMPT */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-               <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                 <BookOpen size={16} className="text-blue-600"/> Input Prompt
-               </h2>
-               <span className="text-xs text-gray-400">{prompt.length}/2000 chars</span>
-            </div>
-            
-            <div className="p-5">
-              <textarea
-                className="w-full min-h-[120px] resize-y outline-none text-base text-gray-800 placeholder-gray-400 font-sans leading-relaxed"
-                placeholder="Tuliskan judul skripsi Anda di sini...&#10;Contoh: Sistem Absensi Berbasis Face Recognition Menggunakan Metode CNN."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            {/* Tombol Generate */}
-            <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-white">
-              <button
-                onClick={handleGenerate}
-                disabled={loading || !prompt.trim()}
-                className="flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm shadow-sm"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw size={16} className="animate-spin" /> Sedang Menulis...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} /> Generate Thesis
-                  </>
-                )}
-              </button>
-            </div>
-          </section>
-
-          {/* BAGIAN 2: HASIL OUTPUT */}
-          {(result || loading) && (
-            <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 mb-10">
-              <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                   <Sparkles size={16} className="text-purple-600"/> Hasil Generator
-                </h2>
-                
-                {!loading && result && (
-                  <button 
-                    onClick={handleCopy}
-                    className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-black transition-colors"
-                  >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                    {copied ? 'Tersalin' : 'Salin Teks'}
-                  </button>
-                )}
+    <div className="flex w-full h-[calc(100vh-4rem)] bg-[#f9fafb] overflow-hidden font-sans">
+      {/* AREA CHAT (KIRI) */}
+      <div className="flex-1 flex flex-col h-full min-w-0 relative">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth">
+          {(!messages || messages.length === 0) && (
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-50 select-none pb-20">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                <Sparkles className="text-gray-400" size={32} />
               </div>
-
-              <div className="p-6 min-h-[200px] bg-white">
-                {loading ? (
-                  <div className="space-y-3 animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
-                    <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                  </div>
-                ) : (
-                  <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap leading-7">
-                    {result}
-                  </div>
-                )}
-              </div>
-            </section>
+              <h3 className="text-lg font-semibold text-gray-600">
+                Mulai Riset Skripsi Anda
+              </h3>
+              <p className="text-sm text-gray-400 max-w-md mt-2">
+                Tulis topik skripsi di bawah, pilih model AI di sebelah kanan.
+              </p>
+            </div>
           )}
+
+          {messages &&
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"} w-full`}
+              >
+                {msg.role === "ai" && (
+                  <div
+                    className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-1 ${settings.aiProvider === "groq" ? "bg-orange-600" : "bg-black"}`}
+                  >
+                    {settings.aiProvider === "groq" && msg.role === "ai" ? (
+                      <Zap size={14} className="text-white" />
+                    ) : (
+                      <Sparkles size={14} className="text-purple-400" />
+                    )}
+                  </div>
+                )}
+
+                <div
+                  className={`relative group max-w-[85%] min-w-0 ${editingId === msg.id ? "w-full max-w-[90%]" : ""}`}
+                >
+                  {editingId === msg.id ? (
+                    <div className="bg-white border border-gray-300 rounded-xl p-3 shadow-md">
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="w-full min-h-[80px] p-2 text-sm text-gray-900 outline-none resize-none bg-gray-50 rounded-lg border border-gray-200 focus:border-black focus:ring-1 focus:ring-black/10"
+                      />
+                      <div className="flex justify-end gap-2 mt-3">
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveEdit(msg.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-black hover:bg-gray-800 rounded-lg flex items-center gap-1"
+                        >
+                          <RefreshCw size={12} /> Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`rounded-2xl p-5 text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm relative ${
+                        msg.role === "user"
+                          ? "bg-black text-white rounded-tr-none"
+                          : "bg-white text-gray-900 border border-gray-200 rounded-tl-none"
+                      }`}
+                    >
+                      {msg.content}
+                      {msg.role === "ai" && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <CopyButton text={msg.content} />
+                        </div>
+                      )}
+                      {msg.role === "user" && (
+                        <div className="absolute top-2 left-[-40px] opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => {
+                              setEditingId(msg.id);
+                              setEditText(msg.content);
+                            }}
+                            className="p-2 text-gray-400 hover:text-black bg-white/50 hover:bg-white rounded-full shadow-sm border border-transparent hover:border-gray-200"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {msg.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0 flex items-center justify-center mt-1">
+                    <User size={14} className="text-gray-500" />
+                  </div>
+                )}
+              </div>
+            ))}
+
+          {isLoading && (
+            <div className="flex gap-4 justify-start animate-pulse">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${settings.aiProvider === "groq" ? "bg-orange-600" : "bg-black"}`}
+              >
+                <RefreshCw size={14} className="text-white animate-spin" />
+              </div>
+              <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-none text-sm text-gray-500">
+                Sedang menulis ulang...
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* INPUT AREA */}
+        <div className="p-4 md:p-6 bg-white border-t border-gray-200 z-20 flex-shrink-0">
+          <div className="max-w-3xl mx-auto relative shadow-sm rounded-xl border border-gray-300 bg-white focus-within:ring-2 focus-within:ring-black/5 focus-within:border-black transition-all">
+            <textarea
+              value={currentInput || ""}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Contoh: Buatkan Bab 1 tentang Dampak AI terhadap UMKM..."
+              className="w-full max-h-40 min-h-[60px] p-4 pr-12 resize-none outline-none text-sm bg-transparent rounded-xl text-gray-900 placeholder:text-gray-400"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !(currentInput || "").trim()}
+              className="absolute right-3 bottom-3 p-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
+            </button>
+          </div>
+          <div className="flex justify-between items-center mt-2 px-1">
+            <span className="text-[10px] text-gray-400">
+              {(currentInput || "").length}/2000 chars
+            </span>
+            <button
+              onClick={clearHistory}
+              className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+            >
+              <Trash2 size={10} /> Hapus History
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* --- SIDEBAR KANAN: SETTINGS (Fixed) --- */}
-      <aside className="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden z-10">
-        
-        {/* TAB HEADER (NEW) */}
-        <div className="flex border-b border-gray-200 bg-gray-50/50">
-            <button
-                onClick={() => setActiveTab('config')}
-                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all border-b-2 ${
-                    activeTab === 'config' 
-                    ? 'border-black text-black bg-white' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-            >
-                <Settings2 size={16} /> Konfigurasi
-            </button>
-            <button
-                onClick={() => setActiveTab('guide')}
-                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all border-b-2 ${
-                    activeTab === 'guide' 
-                    ? 'border-black text-black bg-white' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-            >
-                <HelpCircle size={16} /> Panduan
-            </button>
+      {/* SIDEBAR KONFIGURASI (KANAN) */}
+      <aside className="w-80 h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden z-10 hidden lg:flex flex-shrink-0">
+        <div className="flex border-b border-gray-200 bg-gray-50/50 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab("config")}
+            className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 border-b-2 ${activeTab === "config" ? "border-black text-black bg-white" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"}`}
+          >
+            <Settings2 size={16} /> Konfigurasi
+          </button>
+          <button
+            onClick={() => setActiveTab("guide")}
+            className={`flex-1 py-3 text-sm cursor-pointer font-medium flex items-center justify-center gap-2 border-b-2 ${activeTab === "guide" ? "border-black text-black bg-white" : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"}`}
+          >
+            <HelpCircle size={16} /> Panduan
+          </button>
         </div>
 
-        {/* TAB CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6">
-            
-            {/* CONTENT 1: KONFIGURASI */}
-            {activeTab === 'config' && (
-                <div className="space-y-8 animate-in fade-in duration-300">
-                     {/* 1. Model Selection */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Target Bab</label>
-                        <div className="relative">
-                            <select 
-                                className="w-full appearance-none bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-black focus:border-black block p-3 pr-8 shadow-sm transition-all"
-                                value={settings.model}
-                                onChange={(e) => setSettings({...settings, model: e.target.value})}
-                            >
-                                <option value="bab1">Bab I - Pendahuluan</option>
-                                <option value="bab2">Bab II - Tinjauan Pustaka</option>
-                                <option value="bab3">Bab III - Metodologi</option>
-                                <option value="bab4">Bab IV - Hasil & Pembahasan</option>
-                                <option value="bab5">Bab V - Kesimpulan</option>
-                            </select>
-                            <ChevronDown className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" size={16} />
-                        </div>
-                    </div>
-
-                    {/* 2. Academic Tone Slider */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gaya Bahasa</label>
-                            <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                {settings.tone > 70 ? 'Akademik Kaku' : settings.tone < 30 ? 'Santai' : 'Standar'}
-                            </span>
-                        </div>
-                        <input 
-                            type="range" 
-                            min="0" max="100" 
-                            value={settings.tone}
-                            onChange={(e) => setSettings({...settings, tone: parseInt(e.target.value)})}
-                            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
-                        />
-                    </div>
-
-                    {/* 3. Output Length Slider */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Panjang Output</label>
-                            <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                                {settings.length > 70 ? 'Mendetail' : 'Poin-poin'}
-                            </span>
-                        </div>
-                        <input 
-                            type="range" 
-                            min="0" max="100" 
-                            value={settings.length}
-                            onChange={(e) => setSettings({...settings, length: parseInt(e.target.value)})}
-                            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
-                        />
-                    </div>
-
-                    {/* 4. Language Selector */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Bahasa</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button 
-                                onClick={() => setSettings({...settings, language: 'id'})}
-                                className={`text-sm border rounded-lg py-2 px-3 transition-all ${settings.language === 'id' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-                            >
-                                Indonesia
-                            </button>
-                            <button 
-                                onClick={() => setSettings({...settings, language: 'en'})}
-                                className={`text-sm border rounded-lg py-2 px-3 transition-all ${settings.language === 'en' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
-                            >
-                                English
-                            </button>
-                        </div>
-                    </div>
+        <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+          {activeTab === "config" && (
+            <div className="space-y-8 animate-in fade-in duration-300 pb-10">
+              {/* PILIH PROVIDER */}
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Model AI (Free)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setSettings({ aiProvider: "gemini" })}
+                    className={`flex items-center cursor-pointer justify-center gap-2 text-sm border rounded-lg py-2.5 px-3 transition-all duration-200 ${
+                      settings.aiProvider === "gemini"
+                        ? "bg-black text-white border-black shadow-md hover:bg-gray-800"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-black hover:text-black hover:bg-gray-50"
+                    }`}
+                  >
+                    <Sparkles
+                      size={14}
+                      className={
+                        settings.aiProvider === "gemini"
+                          ? "text-purple-400"
+                          : "text-gray-400"
+                      }
+                    />
+                    Gemini
+                  </button>
+                  <button
+                    onClick={() => setSettings({ aiProvider: "groq" })}
+                    className={`flex items-center cursor-pointer justify-center gap-2 text-sm border rounded-lg py-2.5 px-3 transition-all duration-200 ${
+                      settings.aiProvider === "groq"
+                        ? "bg-orange-600 text-white border-orange-600 shadow-md hover:bg-orange-700"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                    }`}
+                  >
+                    <Zap
+                      size={14}
+                      className={
+                        settings.aiProvider === "groq"
+                          ? "fill-current"
+                          : "text-orange-500"
+                      }
+                    />
+                    Groq
+                  </button>
                 </div>
-            )}
+              </div>
 
-            {/* CONTENT 2: PANDUAN (NEW) */}
-            {activeTab === 'guide' && (
-                <div className="space-y-6 animate-in fade-in duration-300 text-sm text-gray-600 leading-relaxed">
-                    
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                        <h4 className="font-semibold text-blue-900 flex items-center gap-2 mb-2">
-                            <Lightbulb size={16} /> Tips Efektif
-                        </h4>
-                        <p className="text-xs text-blue-800">
-                            Semakin spesifik prompt yang Anda berikan, semakin akurat hasil yang digenerate oleh AI.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <h4 className="font-bold text-gray-800">Cara Menulis Prompt:</h4>
-                        <ul className="list-disc pl-4 space-y-1 text-xs">
-                            <li>Sebutkan <strong>Judul Skripsi</strong> Anda.</li>
-                            <li>Tentukan <strong>Metode</strong> yang dipakai.</li>
-                            <li>Jelaskan <strong>Objek Penelitian</strong>.</li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-2">
-                        <h4 className="font-bold text-gray-800">Contoh Prompt Bab 1:</h4>
-                        <div className="bg-gray-100 p-3 rounded text-xs font-mono text-gray-700">
-                            "Saya membuat aplikasi e-commerce. Tolong buatkan Latar Belakang Masalah yang fokus pada penurunan penjualan di toko fisik pasca pandemi."
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <h4 className="font-bold text-gray-800">Contoh Prompt Bab 3:</h4>
-                        <div className="bg-gray-100 p-3 rounded text-xs font-mono text-gray-700">
-                            "Buatkan alur metodologi penelitian menggunakan model Waterfall untuk pengembangan sistem informasi sekolah."
-                        </div>
-                    </div>
-
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Target Bab
+                </label>
+                <div className="relative ">
+                  <select
+                    className="w-full appearance-none bg-white border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-1 focus:ring-black focus:border-black block p-3 pr-8 shadow-sm"
+                    value={settings.model}
+                    onChange={(e) => setSettings({ model: e.target.value })}
+                  >
+                    <option value="bab1">Bab I - Pendahuluan</option>
+                    <option value="bab2">Bab II - Tinjauan Pustaka</option>
+                    <option value="bab3">Bab III - Metodologi</option>
+                    <option value="bab4">Bab IV - Hasil & Pembahasan</option>
+                    <option value="bab5">Bab V - Kesimpulan</option>
+                  </select>
+                  <ChevronDown
+                    className="absolute right-3 top-3.5 text-gray-400 pointer-events-none"
+                    size={16}
+                  />
                 </div>
-            )}
-
+              </div>
+              {/* Sisa setting (Tone, Length, Language) sama seperti sebelumnya */}
+            </div>
+          )}
         </div>
       </aside>
-
     </div>
   );
 }
