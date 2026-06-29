@@ -16,20 +16,20 @@ import {
 
 const menuItems = [
   { name: "Home", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "My Projects", icon: FileText, href: "/dashboard/projects" },
+
 ];
 
 const toolItems = [
   {
-    name: "Thesis Generator",
+    name: "Theziz AI",
     icon: Zap,
-    href: "/dashboard/generator",
+    href: "/dashboard/thezizAI",
     new: true,
   },
-  { name: "Thesis Blueprint", icon: BookOpen, href: "/dashboard/blueprint" },
-  { name: "Paraphraser", icon: PenTool, href: "/dashboard/paraphrase" },
-  { name: "Citation Fixer", icon: Search, href: "/dashboard/citation" },
-  { name: "AI Chat Assistant", icon: MessageSquare, href: "/dashboard/chat" },
+  { name: "Thesis Prompt Generator", icon: BookOpen, href: "/dashboard/thesisPrompt" },
+  { name: "Template Generator", icon: PenTool, href: "/dashboard/templateGenerator" },
+  { name: "Journal Template", icon: PenTool, href: "/dashboard/journalTemplate" },
+  
 ];
 
 export default function Sidebar() {

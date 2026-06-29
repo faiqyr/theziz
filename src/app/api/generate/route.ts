@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         
         // Gunakan model yang Anda sebutkan berhasil
         // Jika gemini-3-flash-preview gagal, coba 'gemini-2.0-flash-exp' atau 'gemini-1.5-flash'
-        const modelName = "gemini-3-flash-preview"; 
+        const modelName = "gemini-1.5-flash"; 
 
         // SINTAKS BARU (@google/genai)
         const response = await ai.models.generateContent({

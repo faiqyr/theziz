@@ -31,52 +31,28 @@ export default function DashboardPage() {
 
   const features = [
     {
-      title: "Thesis Generator",
+      title: "Theziz AI",
       desc: "Generate outline & chapter drafts instantly.",
       icon: Sparkles,
       color: "text-yellow-400",
       bg: "group-hover:bg-yellow-400/10",
-      href: "/dashboard/generator"
+      href: "/dashboard/thezizAI"
     },
     {
-      title: "Thesis Blueprint",
+      title: "Thesis Prompt Generator",
       desc: "Generate Prompt with Thesis Blueprint",
       icon: BookOpen,
       color: "text-red-400",
       bg: "group-hover:bg-red-400/10",
-      href: "/dashboard/blueprint"
+      href: "/dashboard/thesisPrompt"
     },
     {
-      title: "Data Visualization",
-      desc: "Turn raw data into beautiful charts.",
+      title: "Template Generator",
+      desc: "Download Thesis Template with AI.",
       icon: FileText,
       color: "text-green-400",
       bg: "group-hover:bg-green-400/10",
-      href: "/dashboard/data"
-    },
-    {
-      title: "AI Agents",
-      desc: "Deep research on specific topics.",
-      icon: MessageSquare,
-      color: "text-purple-400",
-      bg: "group-hover:bg-purple-400/10",
-      href: "/dashboard/agent"
-    },
-    {
-      title: "Citation Manager",
-      desc: "Auto-fix APA, MLA, IEEE styles.",
-      icon: Search,
-      color: "text-orange-400",
-      bg: "group-hover:bg-orange-400/10",
-      href: "/dashboard/citation"
-    },
-    {
-      title: "Paraphraser",
-      desc: "Rewrite text to avoid plagiarism.",
-      icon: PenTool,
-      color: "text-blue-400",
-      bg: "group-hover:bg-blue-400/10",
-      href: "/dashboard/paraphrase"
+      href: "/dashboard/templateGenerator"
     },
   ];
 
@@ -85,12 +61,7 @@ export default function DashboardPage() {
       
       {/* Welcome Section */}
       <div className="mb-10 mt-4">
-        <div className="flex items-center gap-2 mb-2">
-           <span className="bg-white/10 text-white text-xs px-2 py-1 rounded-full border border-white/10">
-             New Update
-           </span>
-           <span className="text-xs text-gray-400">Introducing Theziz 2.0 with Deep Reasoning &rarr;</span>
-        </div>
+        
         <h1 className="text-4xl font-bold tracking-tight text-white">
           Good morning, {displayName}
         </h1>
